@@ -396,6 +396,36 @@ fn str_escape_unicode_long() {
 }
 
 #[test]
+fn issue_2948() {
+    // Note - the use of unsafe here is to counteract some weird unicode
+    // handling in javascript.  JS does not properly check the code points
+    // to ensure they make a proper unicode scalar value [1], but just expects
+    // a string of unicode code points [2].
+    // This rust-lang issue [3] has more details.
+    //
+    // [1]: https://www.unicode.org/glossary/#unicode_scalar_value
+    // [2]: https://www.unicode.org/glossary/#code_point
+    // [3]: https://github.com/rust-lang/rust/issues/54845
+    //
+    // U+    D      C   0      0
+    //       D      C   0      0
+    //       1101   110000   000000
+    //   11101101 10110000 10000000
+    let expected_value =
+        unsafe { String::from_utf8_unchecked(vec![0b11101101, 0b10110000, 0b10000000]) };
+
+    assert_eq!(
+        lex(Syntax::default(), r#"'\u{Dc00}'"#),
+        vec![Token::Str {
+            value: expected_value.into(),
+            has_escape: true,
+        }
+        .span(0..10)
+        .lb(),]
+    );
+}
+
+#[test]
 fn regexp_unary_void() {
     assert_eq!(
         lex(Syntax::default(), "void /test/"),

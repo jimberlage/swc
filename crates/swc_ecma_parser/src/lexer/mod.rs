@@ -831,14 +831,13 @@ impl<'a, I: Input> Lexer<'a, I> {
     }
 
     /// Read `CodePoint`.
+    /// Note that an ECMA CodePoint is not necessarily a valid rust char; see
+    /// https://262.ecma-international.org/12.0/#prod-CodePoint
     fn read_code_point(&mut self, raw: &mut Raw) -> LexResult<Char> {
         let start = self.cur_pos();
         let val = self.read_int_u32(16, 0, raw)?;
         match val {
-            Some(val) if 0x0010_FFFF >= val => match char::from_u32(val) {
-                Some(c) => Ok(c.into()),
-                None => self.error(start, SyntaxError::InvalidCodePoint)?,
-            },
+            Some(val) if 0x0010_FFFF >= val => Ok(Char(val)),
             _ => self.error(start, SyntaxError::InvalidCodePoint)?,
         }
     }
